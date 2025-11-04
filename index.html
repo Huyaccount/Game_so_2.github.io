@@ -1,0 +1,2786 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Idle Airplane Shooter</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            color: white;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            min-width: 220px;
+            max-height: 85vh;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        #stats h2 {
+            color: #00ffff;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-shadow: 0 0 8px #00ffff;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 4px 6px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 2px solid #00ffff;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+        
+        .stat-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: #00ff00;
+        }
+        
+        .hp-bar-container {
+            margin-top: 10px;
+        }
+        
+        .hp-bar {
+            width: 100%;
+            height: 18px;
+            background: rgba(100, 0, 0, 0.5);
+            border-radius: 9px;
+            overflow: hidden;
+            border: 2px solid #00ffff;
+        }
+        
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00cc00);
+            width: 100%;
+            transition: width 0.3s;
+        }
+        
+        .hp-text {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 5px;
+            color: #00ffff;
+        }
+        
+        #wave-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid rgba(255, 0, 255, 0.5);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+            min-width: 160px;
+        }
+        
+        #waveType {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #ff00ff;
+            text-shadow: 0 0 8px #ff00ff;
+        }
+        
+        #waveTimer {
+            font-size: 11px;
+            color: #00ffff;
+            font-weight: 700;
+        }
+        
+        .round-info {
+            font-size: 11px;
+            color: #ffff00;
+            margin-top: 5px;
+            font-weight: 700;
+            text-shadow: 0 0 8px #ffff00;
+        }
+        
+        #notifications {
+            position: absolute;
+            bottom: 90px;
+            right: 15px;
+            font-size: 14px;
+            font-weight: 900;
+            color: #ffff00;
+            text-align: right;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 2px solid #ffff00;
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 280px;
+            text-shadow: 0 0 10px #ffff00;
+        }
+        
+        #notifications.show {
+            opacity: 1;
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        #shield-status {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            font-size: 12px;
+            padding: 6px 15px;
+            background: rgba(0, 255, 0, 0.3);
+            backdrop-filter: blur(8px);
+            border-radius: 15px;
+            border: 2px solid #00ff00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+            font-weight: 700;
+            color: #00ff00;
+            text-shadow: 0 0 8px #00ff00;
+            transition: all 0.3s;
+        }
+        
+        #shield-status.invincible {
+            background: rgba(0, 255, 255, 0.5);
+            border-color: #00ffff;
+            color: #00ffff;
+            text-shadow: 0 0 15px #00ffff;
+            animation: invinciblePulse 0.3s infinite;
+        }
+        
+        @keyframes invinciblePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        #shield-status.broken {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: #ff0000;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
+        }
+        
+        #boss-health {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            display: none;
+        }
+        
+        #boss-health.active {
+            display: block;
+            animation: bossAppear 0.5s ease-out;
+        }
+        
+        @keyframes bossAppear {
+            from {
+                transform: translateX(-50%) scale(0);
+            }
+            to {
+                transform: translateX(-50%) scale(1);
+            }
+        }
+        
+        .boss-name {
+            text-align: center;
+            font-size: 28px;
+            color: #ff0000;
+            margin-bottom: 10px;
+            font-weight: 900;
+            text-shadow: 0 0 20px #ff0000;
+            letter-spacing: 3px;
+        }
+        
+        .health-bar {
+            width: 100%;
+            height: 35px;
+            background: rgba(100, 0, 0, 0.7);
+            border: 3px solid #ff0000;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6b6b, #ff0000);
+            width: 100%;
+            transition: width 0.3s;
+            animation: healthPulse 2s infinite;
+        }
+        
+        @keyframes healthPulse {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.5); }
+        }
+        
+        #buffs-display {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            max-width: 400px;
+        }
+        
+        .buff-item {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 2px solid #ffff00;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffff00;
+            box-shadow: 0 0 12px rgba(255, 255, 0, 0.5);
+            text-shadow: 0 0 8px #ffff00;
+            animation: buffPulse 1.5s infinite;
+        }
+        
+        @keyframes buffPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .skill-item {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 8px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            text-align: center;
+            min-width: 50px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+        
+        .skill-item.ready {
+            border-color: #00ff00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+            animation: skillReady 1s infinite;
+        }
+        
+        @keyframes skillReady {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .skill-icon {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+        
+        .skill-cooldown {
+            font-size: 9px;
+            color: #00ffff;
+            font-weight: 700;
+        }
+        
+        .damage-number {
+            position: absolute;
+            font-size: 24px;
+            font-weight: 900;
+            pointer-events: none;
+            animation: floatUp 1.2s ease-out forwards;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .damage-number.crit {
+            font-size: 32px;
+            color: #ff0000;
+            text-shadow: 0 0 15px #ff0000;
+        }
+        
+        .damage-number.normal {
+            color: #ffff00;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) scale(1.5);
+            }
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 60px;
+            border-radius: 25px;
+            border: 4px solid #ff0000;
+            text-align: center;
+            display: none;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.8);
+        }
+        
+        #game-over.show {
+            display: block;
+            animation: gameOverAppear 1s ease-out;
+        }
+        
+        @keyframes gameOverAppear {
+            from {
+                transform: translate(-50%, -50%) scale(0) rotate(180deg);
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+        }
+        
+        #game-over h1 {
+            font-size: 72px;
+            color: #ff0000;
+            margin-bottom: 30px;
+            text-shadow: 0 0 40px #ff0000;
+            animation: gameOverPulse 2s infinite;
+        }
+        
+        @keyframes gameOverPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        #game-over p {
+            font-size: 28px;
+            color: #00ffff;
+            margin: 15px 0;
+            text-shadow: 0 0 10px #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameCanvas"></div>
+    
+    <div id="ui-overlay">
+        <div id="stats">
+            <h2>⚡ THÔNG SỐ</h2>
+            <div class="hp-bar-container">
+                <div class="hp-bar">
+                    <div class="hp-fill" id="hpFill"></div>
+                </div>
+                <div class="hp-text"><span id="hpText">1000 / 1000</span></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⭐ Level</span>
+                <span class="stat-value" id="level">1</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: rgba(100,100,100,0.3); border-radius: 4px; overflow: hidden; margin: 5px 0;">
+                <div id="expBar" style="height: 100%; background: linear-gradient(90deg, #ffff00, #ffaa00); width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">💰 Vàng</span>
+                <span class="stat-value" id="gold">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🎯 Kills</span>
+                <span class="stat-value" id="kills">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">⚔️ Sát thương</span>
+                <span class="stat-value" id="damage">10</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🔫 Tốc độ bắn</span>
+                <span class="stat-value" id="fireRate">1.00</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">💥 Chí mạng</span>
+                <span class="stat-value"><span id="critChance">5</span>% | <span id="critDamage">150</span>%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">💚 Hồi máu</span>
+                <span class="stat-value" id="regen">1</span>/s
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🩸 Hút máu</span>
+                <span class="stat-value" id="lifesteal">0</span>%
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">🛡️ Khiên</span>
+                <span class="stat-value" id="shieldLayers">1</span>/3
+            </div>
+        </div>
+        
+        <div id="wave-info">
+            <div id="waveType">🌊 Vòng Nghỉ Ngơi</div>
+            <div id="waveTimer">20s</div>
+            <div class="round-info">Chu kỳ: <span id="roundNum">1</span></div>
+            <div class="round-info">⏱️ <span id="gameTime">0:00</span></div>
+        </div>
+        
+        <div id="boss-health">
+            <div class="boss-name">🔥 BOSS CỰC MẠNH 🔥</div>
+            <div class="health-bar">
+                <div class="health-fill" id="bossHealthFill"></div>
+            </div>
+        </div>
+        
+        <div id="shield-status">🛡️ Khiên: 1/1</div>
+        
+        <div id="buffs-display"></div>
+        
+        <div id="skills-display" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px;"></div>
+        
+        <div id="notifications"></div>
+        
+        <div id="game-over">
+            <h1>💀 GAME OVER 💀</h1>
+            <p>Boss cuối cùng đã phá hủy tất cả!</p>
+            <p>Thời gian sống: <span id="finalTime">0:00</span></p>
+            <p>Tổng Kills: <span id="finalKills">0</span></p>
+            <p>Vàng thu được: <span id="finalGold">0</span></p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============ GAME CONFIG ============
+        const CONFIG = {
+            waves: {
+                relaxDuration: 20,
+                combatDuration: 60,
+                finalBossTime: 12000 // 200 phút
+            },
+            spawn: {
+                enemyPerSecondBase: 1.5,
+                enemyIncreasePerCycle: 0.4,
+                enemyStatMultiplier: 0.02,
+                itemPerSecondRelax: 2,
+                itemPerSecondCombat: 0.5,
+                enemyDropRate: 0.05
+            },
+            dropRates: {
+                statUpgrade: 0.93,
+                consumable: 0.015,
+                upgrade: 0.015,
+                
+                stats: {
+                    maxHp: 0.15,
+                    damage: 0.20,
+                    fireRate: 0.20,
+                    regenPercent: 0.10,
+                    critDamage: 0.10,
+                    critChance: 0.15,
+                    regenFlat: 0.05,
+                    lifesteal: 0.05
+                },
+                
+                consumables: {
+                    fireRateBoost: 0.25,
+                    damageBoost: 0.25,
+                    fullHeal: 0.15,
+                    restoreShield: 0.15,
+                    killAll: 0.10,
+                    attractAll: 0.10
+                },
+                
+                upgrades: {
+                    bulletStream: 0.40,
+                    multiShot: 0.30,
+                    shieldLayer: 0.30
+                }
+            },
+            boss: {
+                healthMultiplier: 1.65,
+                damageReduction: 0.20,  // Giảm từ 40% xuống 20%
+                minDamagePercent: 10,
+                maxDamagePercent: 45
+            },
+            limits: {
+                bulletStreams: 5,
+                bulletsPerShot: 3,
+                regenPercent: 3.5,
+                critDamage: 200
+            }
+        };
+        
+        // ============ GAME STATE ============
+        const gameState = {
+            gold: 0,
+            kills: 0,
+            level: 1,
+            exp: 0,
+            expToNext: 100,
+            hp: 2000,
+            maxHp: 2000,
+            damage: 25,
+            fireRate: 2.5,
+            critChance: 8,
+            critDamage: 150,
+            regenPercent: 1,
+            regenFlat: 5,
+            lifesteal: 0,
+            bulletStreams: 1,
+            bulletsPerShot: 1,
+            shieldLayers: 1,
+            maxShieldLayers: 3,
+            currentShields: 1,
+            
+            invincible: false,
+            invincibleTimer: 0,
+            
+            skills: {},
+            skillCooldowns: {},
+            
+            currentWave: 'relax',
+            waveTimer: 20,
+            cycle: 1,
+            gameTimeSeconds: 0,
+            
+            bossActive: false,
+            bossHealth: 0,
+            bossMaxHealth: 0,
+            totalEnemyHealthLastWave: 0,
+            
+            activeBuffs: {},
+            gameOver: false,
+            notificationQueue: []
+        };
+        
+        // ============ SCENE SETUP ============
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000033, 40, 100);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 40, 10);  // Nâng cao hơn
+        camera.lookAt(0, 0, 20);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('gameCanvas').appendChild(renderer.domElement);
+        
+        // ============ LIGHTING ============
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(10, 30, 10);
+        scene.add(dirLight);
+        
+        const pointLight = new THREE.PointLight(0x00ffff, 1, 100);
+        pointLight.position.set(0, 10, 20);
+        scene.add(pointLight);
+        
+        // ============ BACKGROUND ============
+        const starGeometry = new THREE.BufferGeometry();
+        const starPositions = [];
+        for (let i = 0; i < 3000; i++) {
+            starPositions.push(
+                (Math.random() - 0.5) * 200,
+                (Math.random() - 0.5) * 200,
+                (Math.random() - 0.5) * 200
+            );
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+        
+        const LANE_POSITIONS = [-10, -5, 0, 5, 10];
+        const PLAYER_Z = 5;  // Nâng lên để thấy rõ máy bay
+        const SPAWN_Z = 50;
+        const WORLD_SPEED = 15;
+        
+        // Các vạch ảo cho AI
+        const ELIMINATION_LINE = 35;  // Vạch tiêu diệt quái
+        const DODGE_LINE = 20;        // Vạch cảnh báo né đạn
+        const COLLECT_LINE = 15;      // Vạch thu thập vật phẩm
+        
+        // ============ PLAYER ============
+        class Player {
+            constructor() {
+                const group = new THREE.Group();
+                
+                // Thân máy bay chính - F-16/F-35 style với nhiều chi tiết hơn
+                const bodyGeo = new THREE.CylinderGeometry(0.6, 0.5, 4.5, 16);
+                const bodyMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x4a7c8c,
+                    metalness: 0.9,
+                    roughness: 0.2
+                });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.rotation.x = Math.PI / 2;
+                body.position.z = 0.5;
+                group.add(body);
+                
+                // Panel lines - đường kẻ trên thân
+                for (let i = -1.5; i < 2; i += 0.5) {
+                    const lineGeo = new THREE.TorusGeometry(0.62, 0.02, 8, 16);
+                    const lineMat = new THREE.MeshStandardMaterial({ 
+                        color: 0x2a3a4a,
+                        metalness: 0.95
+                    });
+                    const line = new THREE.Mesh(lineGeo, lineMat);
+                    line.rotation.y = Math.PI / 2;
+                    line.position.z = i;
+                    group.add(line);
+                }
+                
+                // Mũi nhọn với nhiều chi tiết
+                const noseGeo = new THREE.ConeGeometry(0.5, 1.5, 16);
+                const nose = new THREE.Mesh(noseGeo, bodyMat);
+                nose.rotation.x = Math.PI / 2;
+                nose.position.z = 3.2;
+                group.add(nose);
+                
+                // Nose cone tip
+                const tipGeo = new THREE.SphereGeometry(0.15, 12, 12);
+                const tipMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a2a3a,
+                    metalness: 1,
+                    roughness: 0.1
+                });
+                const tip = new THREE.Mesh(tipGeo, tipMat);
+                tip.position.z = 3.9;
+                group.add(tip);
+                
+                // Cockpit với chi tiết
+                const cockpitGeo = new THREE.SphereGeometry(0.6, 16, 16);
+                const cockpitMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a2f3f,
+                    metalness: 0.95,
+                    roughness: 0.05,
+                    transparent: true,
+                    opacity: 0.85,
+                    emissive: 0x0088ff,
+                    emissiveIntensity: 0.3
+                });
+                const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+                cockpit.scale.set(1, 0.65, 1.6);
+                cockpit.position.set(0, 0.4, 1.8);
+                group.add(cockpit);
+                
+                // Cockpit frame
+                const frameGeo = new THREE.TorusGeometry(0.5, 0.03, 8, 16);
+                const frameMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x2a2a2a,
+                    metalness: 1
+                });
+                const frame = new THREE.Mesh(frameGeo, frameMat);
+                frame.rotation.x = Math.PI / 2;
+                frame.position.set(0, 0.4, 1.8);
+                frame.scale.set(1.2, 1, 0.7);
+                group.add(frame);
+                
+                // Air intake bên dưới
+                const intakeGeo = new THREE.BoxGeometry(0.8, 0.3, 1.2);
+                const intakeMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x2a2a2a,
+                    metalness: 0.9
+                });
+                const intakeL = new THREE.Mesh(intakeGeo, intakeMat);
+                intakeL.position.set(-0.7, -0.3, 0.5);
+                group.add(intakeL);
+                
+                const intakeR = new THREE.Mesh(intakeGeo, intakeMat);
+                intakeR.position.set(0.7, -0.3, 0.5);
+                group.add(intakeR);
+                
+                // Cánh delta chính với nhiều chi tiết
+                const wingGeo = new THREE.BufferGeometry();
+                const wingVertices = new Float32Array([
+                    -7, 0, 0.8,
+                    7, 0, 0.8,
+                    0, 0, -2.5,
+                ]);
+                wingGeo.setAttribute('position', new THREE.BufferAttribute(wingVertices, 3));
+                wingGeo.computeVertexNormals();
+                
+                const wingMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x5a8c9c,
+                    metalness: 0.85,
+                    roughness: 0.25,
+                    side: THREE.DoubleSide
+                });
+                const wings = new THREE.Mesh(wingGeo, wingMat);
+                wings.position.y = -0.15;
+                group.add(wings);
+                
+                // Wing strakes (đường gân cánh)
+                const strakeGeo = new THREE.BoxGeometry(0.1, 0.05, 2);
+                const strakeL = new THREE.Mesh(strakeGeo, bodyMat);
+                strakeL.position.set(-3, -0.1, -0.3);
+                strakeL.rotation.y = -0.3;
+                group.add(strakeL);
+                
+                const strakeR = new THREE.Mesh(strakeGeo, bodyMat);
+                strakeR.position.set(3, -0.1, -0.3);
+                strakeR.rotation.y = 0.3;
+                group.add(strakeR);
+                
+                // Wing tips với ngôi sao đỏ chi tiết hơn
+                const starCanvas = document.createElement('canvas');
+                starCanvas.width = 128;
+                starCanvas.height = 128;
+                const ctx = starCanvas.getContext('2d');
+                
+                // Vẽ ngôi sao với viền
+                ctx.fillStyle = '#ff0000';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                    const x = 64 + Math.cos(angle) * 35;
+                    const y = 64 + Math.sin(angle) * 35;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                const starTexture = new THREE.CanvasTexture(starCanvas);
+                const starMat = new THREE.MeshBasicMaterial({ 
+                    map: starTexture,
+                    transparent: true
+                });
+                
+                const tipGeoStar = new THREE.PlaneGeometry(0.8, 0.8);
+                const tipL = new THREE.Mesh(tipGeoStar, starMat);
+                tipL.position.set(-6.3, 0.15, 0.3);
+                tipL.rotation.x = -Math.PI / 2;
+                group.add(tipL);
+                
+                const tipR = new THREE.Mesh(tipGeoStar, starMat);
+                tipR.position.set(6.3, 0.15, 0.3);
+                tipR.rotation.x = -Math.PI / 2;
+                group.add(tipR);
+                
+                // Missile hardpoints dưới cánh
+                const hardpointGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8);
+                const hardpointMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x3a3a3a,
+                    metalness: 0.9
+                });
+                
+                for (let side of [-1, 1]) {
+                    for (let pos of [-4, -2.5]) {
+                        const hardpoint = new THREE.Mesh(hardpointGeo, hardpointMat);
+                        hardpoint.position.set(side * pos, -0.3, 0);
+                        group.add(hardpoint);
+                    }
+                }
+                
+                // Đuôi dọc chi tiết
+                const tailGeo = new THREE.BoxGeometry(0.25, 2.2, 1.2);
+                const tail = new THREE.Mesh(tailGeo, wingMat);
+                tail.position.set(0, 1, -1.8);
+                group.add(tail);
+                
+                // Tail cap
+                const tailCapGeo = new THREE.ConeGeometry(0.2, 0.5, 8);
+                const tailCap = new THREE.Mesh(tailCapGeo, bodyMat);
+                tailCap.position.set(0, 2.1, -1.8);
+                group.add(tailCap);
+                
+                // Đuôi ngang
+                const hTailGeo = new THREE.BoxGeometry(3, 0.25, 1);
+                const hTail = new THREE.Mesh(hTailGeo, wingMat);
+                hTail.position.set(0, 0.7, -1.9);
+                group.add(hTail);
+                
+                // Động cơ phun lửa với chi tiết
+                const engineGeo = new THREE.CylinderGeometry(0.4, 0.45, 1.5, 16);
+                const engineMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x2a2a2a,
+                    metalness: 0.95,
+                    roughness: 0.15
+                });
+                
+                const engineL = new THREE.Mesh(engineGeo, engineMat);
+                engineL.rotation.x = Math.PI / 2;
+                engineL.position.set(-0.9, -0.15, -1.6);
+                group.add(engineL);
+                
+                const engineR = new THREE.Mesh(engineGeo, engineMat);
+                engineR.rotation.x = Math.PI / 2;
+                engineR.position.set(0.9, -0.15, -1.6);
+                group.add(engineR);
+                
+                // Engine nozzles (vòng phun)
+                const nozzleGeo = new THREE.TorusGeometry(0.42, 0.05, 8, 16);
+                const nozzleMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xff6600,
+                    emissive: 0xff6600,
+                    emissiveIntensity: 0.8,
+                    metalness: 1
+                });
+                
+                const nozzleL = new THREE.Mesh(nozzleGeo, nozzleMat);
+                nozzleL.rotation.y = Math.PI / 2;
+                nozzleL.position.set(-0.9, -0.15, -2.3);
+                group.add(nozzleL);
+                
+                const nozzleR = new THREE.Mesh(nozzleGeo, nozzleMat);
+                nozzleR.rotation.y = Math.PI / 2;
+                nozzleR.position.set(0.9, -0.15, -2.3);
+                group.add(nozzleR);
+                
+                // Lửa phun với gradient
+                const flameGeo = new THREE.ConeGeometry(0.35, 1.2, 8);
+                const flameMat = new THREE.MeshBasicMaterial({ 
+                    color: 0x6644ff,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const flameL = new THREE.Mesh(flameGeo, flameMat);
+                flameL.rotation.x = Math.PI / 2;
+                flameL.position.set(-0.9, -0.15, -3);
+                group.add(flameL);
+                
+                const flameR = new THREE.Mesh(flameGeo, flameMat);
+                flameR.rotation.x = Math.PI / 2;
+                flameR.position.set(0.9, -0.15, -3);
+                group.add(flameR);
+                
+                // Afterburner glow
+                const glowGeo = new THREE.SphereGeometry(0.5, 12, 12);
+                const glowMat = new THREE.MeshBasicMaterial({ 
+                    color: 0x8844ff,
+                    transparent: true,
+                    opacity: 0.4
+                });
+                
+                const glowL = new THREE.Mesh(glowGeo, glowMat);
+                glowL.scale.set(1, 1, 1.5);
+                glowL.position.set(-0.9, -0.15, -2.8);
+                group.add(glowL);
+                
+                const glowR = new THREE.Mesh(glowGeo, glowMat);
+                glowR.scale.set(1, 1, 1.5);
+                glowR.position.set(0.9, -0.15, -2.8);
+                group.add(glowR);
+                
+                this.mesh = group;
+                this.mesh.scale.set(0.7, 0.7, 0.7);
+                this.mesh.position.set(0, 0, PLAYER_Z);
+                
+                this.targetX = 0;
+                this.bullets = [];
+                this.timeSinceLastShot = 0;
+                this.flames = [flameL, flameR];
+                this.glows = [glowL, glowR];
+                this.nozzles = [nozzleL, nozzleR];
+                this.guns = [];  // Array chứa gun objects với position và mesh
+                this.muzzleFlashes = [];  // Array chứa muzzle flash effects
+                
+                scene.add(this.mesh);
+                this.updateGuns();
+            }
+            
+            updateGuns() {
+                // Xóa súng cũ và muzzle flashes
+                this.guns.forEach(gun => {
+                    if (gun.mesh) this.mesh.remove(gun.mesh);
+                    if (gun.muzzleFlash) this.mesh.remove(gun.muzzleFlash);
+                });
+                this.guns = [];
+                this.muzzleFlashes = [];
+                
+                const streams = gameState.bulletStreams;
+                
+                // Tạo súng mới
+                const gunBodyGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.8, 12);
+                const gunBodyMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x2a2a2a,
+                    metalness: 0.95,
+                    roughness: 0.2
+                });
+                
+                const barrelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 12);
+                const barrelMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a1a1a,
+                    metalness: 1,
+                    roughness: 0.1
+                });
+                
+                if (streams === 1) {
+                    // 1 súng ở giữa
+                    const gunGroup = new THREE.Group();
+                    
+                    const body = new THREE.Mesh(gunBodyGeo, gunBodyMat);
+                    body.rotation.x = Math.PI / 2;
+                    gunGroup.add(body);
+                    
+                    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+                    barrel.rotation.x = Math.PI / 2;
+                    barrel.position.z = 0.5;
+                    gunGroup.add(barrel);
+                    
+                    // Barrel tip
+                    const tipGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.1, 12);
+                    const tip = new THREE.Mesh(tipGeo, new THREE.MeshStandardMaterial({ 
+                        color: 0xff4400,
+                        emissive: 0xff4400,
+                        emissiveIntensity: 0.5
+                    }));
+                    tip.rotation.x = Math.PI / 2;
+                    tip.position.z = 0.85;
+                    gunGroup.add(tip);
+                    
+                    gunGroup.position.set(0, -0.3, 2.2);
+                    this.mesh.add(gunGroup);
+                    
+                    // Muzzle flash
+                    const flashGeo = new THREE.SphereGeometry(0.15, 8, 8);
+                    const flashMat = new THREE.MeshBasicMaterial({ 
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 0
+                    });
+                    const flash = new THREE.Mesh(flashGeo, flashMat);
+                    flash.position.set(0, -0.3, 3);
+                    this.mesh.add(flash);
+                    
+                    this.guns.push({
+                        mesh: gunGroup,
+                        muzzleFlash: flash,
+                        offsetX: 0,
+                        offsetY: -0.3,
+                        offsetZ: 3,
+                        recoil: 0
+                    });
+                } else {
+                    // Multiple guns
+                    const spacing = Math.min(1.4, 6 / streams);
+                    for (let i = 0; i < streams; i++) {
+                        const gunGroup = new THREE.Group();
+                        
+                        const body = new THREE.Mesh(gunBodyGeo, gunBodyMat);
+                        body.rotation.x = Math.PI / 2;
+                        gunGroup.add(body);
+                        
+                        const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+                        barrel.rotation.x = Math.PI / 2;
+                        barrel.position.z = 0.5;
+                        gunGroup.add(barrel);
+                        
+                        const tipGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.1, 12);
+                        const tip = new THREE.Mesh(tipGeo, new THREE.MeshStandardMaterial({ 
+                            color: 0xff4400,
+                            emissive: 0xff4400,
+                            emissiveIntensity: 0.5
+                        }));
+                        tip.rotation.x = Math.PI / 2;
+                        tip.position.z = 0.85;
+                        gunGroup.add(tip);
+                        
+                        const offsetX = (i - (streams - 1) / 2) * spacing;
+                        gunGroup.position.set(offsetX, -0.3, 2.2);
+                        this.mesh.add(gunGroup);
+                        
+                        // Muzzle flash
+                        const flashGeo = new THREE.SphereGeometry(0.15, 8, 8);
+                        const flashMat = new THREE.MeshBasicMaterial({ 
+                            color: 0xffff00,
+                            transparent: true,
+                            opacity: 0
+                        });
+                        const flash = new THREE.Mesh(flashGeo, flashMat);
+                        flash.position.set(offsetX, -0.3, 3);
+                        this.mesh.add(flash);
+                        
+                        this.guns.push({
+                            mesh: gunGroup,
+                            muzzleFlash: flash,
+                            offsetX: offsetX,
+                            offsetY: -0.3,
+                            offsetZ: 3,
+                            recoil: 0
+                        });
+                    }
+                }
+            }
+            
+            update(delta) {
+                if (gameState.gameOver) return;
+                
+                // Invincibility timer
+                if (gameState.invincible) {
+                    gameState.invincibleTimer -= delta;
+                    this.mesh.visible = Math.floor(gameState.invincibleTimer * 10) % 2 === 0;
+                    
+                    if (gameState.invincibleTimer <= 0) {
+                        gameState.invincible = false;
+                        this.mesh.visible = true;
+                    }
+                }
+                
+                this.mesh.position.x += (this.targetX - this.mesh.position.x) * 8 * delta;
+                const targetRoll = (this.targetX - this.mesh.position.x) * 0.3;
+                this.mesh.rotation.z += (targetRoll - this.mesh.rotation.z) * 5 * delta;
+                
+                // Flame animation
+                const pulse = Math.sin(Date.now() * 0.02) * 0.2 + 0.8;
+                this.flames.forEach(flame => {
+                    flame.scale.z = pulse;
+                    flame.material.opacity = pulse;
+                });
+                
+                // Glow animation
+                this.glows.forEach(glow => {
+                    glow.material.opacity = pulse * 0.4;
+                    glow.scale.set(1, 1, pulse * 1.5);
+                });
+                
+                // Nozzle pulse
+                this.nozzles.forEach(nozzle => {
+                    nozzle.material.emissiveIntensity = 0.5 + pulse * 0.5;
+                });
+                
+                // Gun recoil animation
+                this.guns.forEach(gun => {
+                    if (gun.recoil > 0) {
+                        gun.recoil -= delta * 8;
+                        if (gun.recoil < 0) gun.recoil = 0;
+                    }
+                    gun.mesh.position.z = 2.2 - gun.recoil * 0.3;
+                });
+                
+                // Muzzle flash animation
+                this.guns.forEach(gun => {
+                    if (gun.muzzleFlash.material.opacity > 0) {
+                        gun.muzzleFlash.material.opacity -= delta * 8;
+                        gun.muzzleFlash.scale.setScalar(1 + (1 - gun.muzzleFlash.material.opacity) * 2);
+                    }
+                });
+                
+                // Hồi máu
+                const regenPercent = Math.min(gameState.regenPercent, CONFIG.limits.regenPercent);
+                const totalRegen = gameState.regenFlat + (gameState.maxHp * regenPercent / 100);
+                gameState.hp = Math.min(gameState.maxHp, gameState.hp + totalRegen * delta);
+                
+                // Bắn đạn
+                let currentFireRate = gameState.fireRate;
+                if (gameState.activeBuffs.fireRateBoost) currentFireRate += 5;
+                
+                this.timeSinceLastShot += delta;
+                if (this.timeSinceLastShot >= 1 / currentFireRate) {
+                    this.shoot();
+                    this.timeSinceLastShot = 0;
+                }
+                
+                // Update bullets
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    if (!bullet || !bullet.position) {
+                        this.bullets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    bullet.position.z += 60 * delta;
+                    
+                    if (bullet.position.z > SPAWN_Z + 20) {
+                        if (bullet.parent) scene.remove(bullet);
+                        this.bullets.splice(i, 1);
+                    }
+                }
+            }
+            
+            shoot() {
+                const shots = gameState.bulletsPerShot;
+                
+                // Update guns nếu số stream thay đổi
+                if (this.guns.length !== gameState.bulletStreams) {
+                    this.updateGuns();
+                }
+                
+                // Bắn từ mỗi gun
+                for (const gun of this.guns) {
+                    for (let s = 0; s < shots; s++) {
+                        setTimeout(() => this.createBullet(gun), s * 50);
+                    }
+                }
+            }
+            
+            createBullet(gun) {
+                if (!gun) return;
+                
+                // Trigger recoil
+                gun.recoil = 1;
+                
+                // Trigger muzzle flash
+                gun.muzzleFlash.material.opacity = 1;
+                gun.muzzleFlash.scale.setScalar(1);
+                
+                // Tạo đạn từ vị trí súng (world position)
+                const worldPos = new THREE.Vector3();
+                gun.muzzleFlash.getWorldPosition(worldPos);
+                
+                const geo = new THREE.CylinderGeometry(0.15, 0.15, 1, 8);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0xffff00,
+                    emissive: 0xffff00,
+                    emissiveIntensity: 1
+                });
+                const bullet = new THREE.Mesh(geo, mat);
+                bullet.rotation.x = Math.PI / 2;
+                bullet.position.copy(worldPos);
+                
+                scene.add(bullet);
+                this.bullets.push(bullet);
+            }
+            
+            moveToX(x) {
+                this.targetX = Math.max(-12, Math.min(12, x));
+            }
+            
+            takeDamage(amount) {
+                if (gameState.invincible) return;
+                
+                if (gameState.currentShields > 0) {
+                    gameState.currentShields--;
+                    showNotification('🛡️ Khiên đỡ đòn!');
+                    updateShieldDisplay();
+                    
+                    gameState.invincible = true;
+                    gameState.invincibleTimer = 0.5;
+                } else {
+                    gameState.hp -= amount;
+                    
+                    gameState.invincible = true;
+                    gameState.invincibleTimer = 0.5;
+                    
+                    if (gameState.hp <= 0) {
+                        gameState.hp = 0;
+                        triggerGameOver();
+                    }
+                }
+            }
+        }
+        
+        // ============ ENEMY TYPES ============
+        class Enemy {
+            constructor(type, xPos) {
+                this.type = type; // 'tank' hoặc 'damage'
+                const group = new THREE.Group();
+                
+                let color, size, healthMult, damageMult;
+                if (type === 'tank') {
+                    color = 0xff6600;
+                    size = 1.5;
+                    healthMult = 3;
+                    damageMult = 1;
+                } else {
+                    color = 0xff0000;
+                    size = 1;
+                    healthMult = 1;
+                    damageMult = 2;
+                }
+                
+                const bodyGeo = new THREE.BoxGeometry(size, size, size);
+                const bodyMat = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.4
+                });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                group.add(body);
+                
+                const spikeGeo = new THREE.ConeGeometry(size * 0.3, size * 0.8, 6);
+                const spike = new THREE.Mesh(spikeGeo, bodyMat);
+                spike.position.y = size * 0.8;
+                group.add(spike);
+                
+                this.mesh = group;
+                this.mesh.position.set(xPos, 0, SPAWN_Z);
+                
+                const baseHealth = 30 + gameState.cycle * 15;
+                this.maxHealth = baseHealth * healthMult;
+                this.health = this.maxHealth;
+                this.damage = 50 * damageMult;
+                
+                this.shootTimer = Math.random() * 3;
+                this.bullets = [];
+                
+                scene.add(this.mesh);
+            }
+            
+            update(delta) {
+                if (!this.mesh || !this.mesh.position) return;
+                
+                this.mesh.position.z -= WORLD_SPEED * delta;
+                this.mesh.rotation.y += delta * 2;
+                
+                this.shootTimer -= delta;
+                if (this.shootTimer <= 0) {
+                    this.shoot();
+                    this.shootTimer = 2 + Math.random();
+                }
+                
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    if (!bullet || !bullet.position) {
+                        this.bullets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    bullet.position.z -= 25 * delta;
+                    if (bullet.position.z < PLAYER_Z - 10) {
+                        if (bullet.parent) scene.remove(bullet);
+                        this.bullets.splice(i, 1);
+                    }
+                }
+            }
+            
+            shoot() {
+                const geo = new THREE.SphereGeometry(0.2);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const bullet = new THREE.Mesh(geo, mat);
+                bullet.position.copy(this.mesh.position);
+                scene.add(bullet);
+                this.bullets.push(bullet);
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+                return this.health <= 0;
+            }
+            
+            destroy() {
+                const pos = this.mesh && this.mesh.position ? this.mesh.position.clone() : null;
+                
+                if (this.mesh && this.mesh.parent) {
+                    scene.remove(this.mesh);
+                }
+                
+                // Xóa tất cả đạn của enemy này
+                this.bullets.forEach(b => {
+                    if (b && b.parent) {
+                        scene.remove(b);
+                    }
+                });
+                this.bullets = [];
+                
+                if (pos) {
+                    createExplosion(pos, this.type === 'tank' ? 0xff6600 : 0xff0000, 1.5);
+                    
+                    // 5% chance drop item
+                    if (Math.random() < CONFIG.spawn.enemyDropRate) {
+                        const category = getRandomItemType();
+                        let type;
+                        if (category === 'stat') type = getRandomStatType();
+                        else if (category === 'consumable') type = getRandomConsumableType();
+                        else type = getRandomUpgradeType();
+                        
+                        items.push(new Item(pos.x, category, type));
+                    }
+                }
+            }
+        }
+        
+        // ============ BOSS ============
+        class Boss {
+            constructor(cycle) {
+                const group = new THREE.Group();
+                
+                this.cycle = cycle;
+                this.phase = 1;
+                
+                // Core chính - phát sáng mạnh
+                const coreGeo = new THREE.IcosahedronGeometry(3.5);
+                const coreMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xff00ff,
+                    emissive: 0xff00ff,
+                    emissiveIntensity: 1,
+                    metalness: 1,
+                    roughness: 0.1
+                });
+                const core = new THREE.Mesh(coreGeo, coreMat);
+                group.add(core);
+                
+                // Lớp bảo vệ bên ngoài
+                const shieldGeo = new THREE.DodecahedronGeometry(4.5);
+                const shieldMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xff00ff,
+                    emissive: 0xff00ff,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.9,
+                    transparent: true,
+                    opacity: 0.3,
+                    wireframe: true
+                });
+                const shield = new THREE.Mesh(shieldGeo, shieldMat);
+                group.add(shield);
+                
+                // Vòng năng lượng quay
+                this.energyRings = [];
+                for (let i = 0; i < 3; i++) {
+                    const ringGeo = new THREE.TorusGeometry(5 + i, 0.2, 8, 32);
+                    const ringMat = new THREE.MeshStandardMaterial({ 
+                        color: 0xff00ff,
+                        emissive: 0xff00ff,
+                        emissiveIntensity: 0.8,
+                        metalness: 1
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2 + (i * Math.PI / 6);
+                    group.add(ring);
+                    this.energyRings.push(ring);
+                }
+                
+                // Cánh năng lượng
+                this.wings = [];
+                for (let i = 0; i < 8; i++) {
+                    const wingGroup = new THREE.Group();
+                    
+                    const wingGeo = new THREE.BoxGeometry(6, 0.3, 2);
+                    const wingMat = new THREE.MeshStandardMaterial({ 
+                        color: 0xff00ff,
+                        emissive: 0xff00ff,
+                        emissiveIntensity: 0.6,
+                        metalness: 0.9
+                    });
+                    const wing = new THREE.Mesh(wingGeo, wingMat);
+                    wingGroup.add(wing);
+                    
+                    // Tip phát sáng
+                    const tipGeo = new THREE.ConeGeometry(0.4, 1.2, 6);
+                    const tipMat = new THREE.MeshBasicMaterial({ 
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const tip = new THREE.Mesh(tipGeo, tipMat);
+                    tip.position.x = 3;
+                    tip.rotation.z = -Math.PI / 2;
+                    wingGroup.add(tip);
+                    
+                    const angle = (i * Math.PI * 2) / 8;
+                    wingGroup.position.x = Math.cos(angle) * 4;
+                    wingGroup.position.z = Math.sin(angle) * 4;
+                    wingGroup.rotation.y = angle;
+                    
+                    group.add(wingGroup);
+                    this.wings.push({ group: wingGroup, tip: tip });
+                }
+                
+                // Particles xung quanh
+                const particleGeo = new THREE.BufferGeometry();
+                const particlePositions = [];
+                for (let i = 0; i < 100; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 6 + Math.random() * 3;
+                    const y = (Math.random() - 0.5) * 8;
+                    particlePositions.push(
+                        Math.cos(angle) * radius,
+                        y,
+                        Math.sin(angle) * radius
+                    );
+                }
+                particleGeo.setAttribute('position', new THREE.Float32BufferAttribute(particlePositions, 3));
+                const particleMat = new THREE.PointsMaterial({ 
+                    color: 0xff00ff,
+                    size: 0.3,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+                const particles = new THREE.Points(particleGeo, particleMat);
+                group.add(particles);
+                
+                this.mesh = group;
+                this.mesh.position.set(0, 0, SPAWN_Z);
+                this.core = core;
+                this.shield = shield;
+                this.particles = particles;
+                
+                this.maxHealth = gameState.totalEnemyHealthLastWave * CONFIG.boss.healthMultiplier;
+                this.health = this.maxHealth;
+                
+                const damagePercent = CONFIG.boss.minDamagePercent + 
+                                     (cycle - 1) * ((CONFIG.boss.maxDamagePercent - CONFIG.boss.minDamagePercent) / 10);
+                this.damage = gameState.maxHp * Math.min(damagePercent, CONFIG.boss.maxDamagePercent) / 100;
+                
+                this.shootTimer = 0;
+                this.bullets = [];
+                this.skillTimer = 0;
+                this.minionTimer = 0;
+                this.transformTimer = 10;
+                this.skillTimer = 0;
+                this.minionTimer = 0;
+                this.transformTimer = 10;
+                
+                gameState.bossActive = true;
+                gameState.bossHealth = this.health;
+                gameState.bossMaxHealth = this.maxHealth;
+                document.getElementById('boss-health').classList.add('active');
+                
+                scene.add(this.mesh);
+            }
+            
+            update(delta) {
+                if (!this.mesh || !this.mesh.position) return;
+                
+                this.mesh.position.z = Math.max(30, this.mesh.position.z - WORLD_SPEED * delta * 0.3);
+                
+                // Time slow effect
+                const slowMult = gameState.activeBuffs.timeSlow ? 0.5 : 1;
+                
+                // Core xoay và phát sáng
+                this.core.rotation.x += delta * 2 * slowMult;
+                this.core.rotation.y += delta * 1.5 * slowMult;
+                const pulse = Math.sin(Date.now() * 0.008) * 0.4 + 0.8;
+                this.core.material.emissiveIntensity = pulse;
+                
+                // Shield xoay ngược chiều
+                this.shield.rotation.x -= delta * 1.5 * slowMult;
+                this.shield.rotation.y += delta * 2 * slowMult;
+                
+                // Energy rings
+                this.energyRings.forEach((ring, i) => {
+                    ring.rotation.z += delta * (3 + i) * slowMult;
+                });
+                
+                // Particles xoay
+                this.particles.rotation.y += delta * 1.5 * slowMult;
+                
+                // Phase change
+                const healthPercent = this.health / this.maxHealth;
+                if (healthPercent < 0.3) this.phase = 3;
+                else if (healthPercent < 0.6) this.phase = 2;
+                
+                // Transform
+                this.transformTimer -= delta;
+                if (this.transformTimer <= 0) {
+                    this.transform();
+                    this.transformTimer = 15;
+                }
+                
+                // Wings animation
+                this.wings.forEach((wing, i) => {
+                    const angle = (i * Math.PI * 2) / 8 + Date.now() * 0.002 * slowMult;
+                    wing.group.position.x = Math.cos(angle) * 4;
+                    wing.group.position.z = Math.sin(angle) * 4;
+                    wing.group.rotation.y = angle;
+                    
+                    // Tip blink
+                    wing.tip.material.opacity = pulse;
+                });
+                
+                // Shoot
+                this.shootTimer -= delta;
+                const shootInterval = this.phase === 3 ? 0.5 : (this.phase === 2 ? 0.8 : 1.2);
+                if (this.shootTimer <= 0) {
+                    this.shootPattern();
+                    this.shootTimer = shootInterval;
+                }
+                
+                // Summon minions
+                if (this.cycle >= 2) {
+                    this.minionTimer += delta;
+                    if (this.minionTimer >= 8) {
+                        this.summonMinions();
+                        this.minionTimer = 0;
+                    }
+                }
+                
+                // Special skill
+                this.skillTimer += delta;
+                if (this.skillTimer >= 12) {
+                    this.useSkill();
+                    this.skillTimer = 0;
+                }
+                
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    if (!bullet || !bullet.position) {
+                        this.bullets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    bullet.position.z -= 30 * delta * slowMult;
+                    bullet.rotation.x += delta * 10 * slowMult;
+                    if (bullet.position.z < PLAYER_Z - 10) {
+                        if (bullet.parent) scene.remove(bullet);
+                        this.bullets.splice(i, 1);
+                    }
+                }
+            }
+            
+            shootPattern() {
+                const count = this.phase * 2;
+                for (let i = 0; i < count; i++) {
+                    const angle = (i * Math.PI * 2) / count;
+                    const x = Math.cos(angle) * 10;
+                    this.createBullet(x);
+                }
+            }
+            
+            createBullet(xOffset) {
+                const geo = new THREE.OctahedronGeometry(0.5);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0xff00ff,
+                    emissive: 0xff00ff,
+                    emissiveIntensity: 1.2
+                });
+                const bullet = new THREE.Mesh(geo, mat);
+                bullet.position.set(this.mesh.position.x + xOffset, 0, this.mesh.position.z - 4);
+                scene.add(bullet);
+                this.bullets.push(bullet);
+            }
+            
+            summonMinions() {
+                for (let i = 0; i < 3; i++) {
+                    const x = (Math.random() - 0.5) * 20;
+                    enemies.push(new Enemy(Math.random() > 0.5 ? 'tank' : 'damage', x));
+                }
+                showNotification('👹 Boss triệu hồi quân đội!');
+            }
+            
+            useSkill() {
+                showNotification('⚡ Boss dùng kỹ năng!');
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(() => {
+                        const x = -15 + (i / 19) * 30;
+                        this.createBullet(x);
+                    }, i * 50);
+                }
+            }
+            
+            transform() {
+                const colors = [0xff00ff, 0x00ffff, 0xffff00, 0xff0000];
+                const newColor = colors[Math.floor(Math.random() * colors.length)];
+                this.core.material.color.setHex(newColor);
+                this.core.material.emissive.setHex(newColor);
+                this.shield.material.color.setHex(newColor);
+                this.shield.material.emissive.setHex(newColor);
+                showNotification('🔄 Boss biến hình!');
+            }
+            
+            takeDamage(amount) {
+                // Giảm 20% damage nhận vào
+                const reducedDamage = amount * (1 - CONFIG.boss.damageReduction);
+                this.health -= reducedDamage;
+                
+                // Hiệu ứng bắn trúng boss
+                const hitFlash = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.8),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 0.8
+                    })
+                );
+                hitFlash.position.copy(this.mesh.position);
+                hitFlash.position.x += (Math.random() - 0.5) * 6;
+                hitFlash.position.z += (Math.random() - 0.5) * 6;
+                scene.add(hitFlash);
+                
+                let flashLife = 0.2;
+                const flashInterval = setInterval(() => {
+                    flashLife -= 0.05;
+                    hitFlash.scale.multiplyScalar(1.5);
+                    hitFlash.material.opacity = flashLife / 0.2;
+                    if (flashLife <= 0) {
+                        scene.remove(hitFlash);
+                        clearInterval(flashInterval);
+                    }
+                }, 50);
+                
+                gameState.bossHealth = this.health;
+                updateBossHealthBar();
+                return this.health <= 0;
+            }
+            
+            destroy() {
+                const pos = this.mesh && this.mesh.position ? this.mesh.position.clone() : null;
+                
+                if (this.mesh && this.mesh.parent) {
+                    scene.remove(this.mesh);
+                }
+                
+                // Xóa tất cả đạn của boss
+                this.bullets.forEach(b => {
+                    if (b && b.parent) {
+                        scene.remove(b);
+                    }
+                });
+                this.bullets = [];
+                
+                if (pos) {
+                    createExplosion(pos, 0xff00ff, 3);
+                }
+                
+                gameState.bossActive = false;
+                document.getElementById('boss-health').classList.remove('active');
+                gameState.gold += 10000;
+                gameState.kills++;
+                addExp(500);
+                showNotification(`💀 TIÊU DIỆT BOSS! +10000💰 +500EXP`);
+                
+                // Kết thúc vòng boss ngay lập tức
+                gameState.currentWave = 'relax';
+                gameState.waveTimer = CONFIG.waves.relaxDuration;
+                gameState.cycle++;
+                document.getElementById('waveType').textContent = '🌊 Vòng Nghỉ Ngơi';
+            }
+        }
+        
+        // ============ FINAL BOSS ============
+        class FinalBoss {
+            constructor() {
+                const group = new THREE.Group();
+                
+                const geo = new THREE.IcosahedronGeometry(6);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0x000000,
+                    emissive: 0xff0000,
+                    emissiveIntensity: 1,
+                    metalness: 1
+                });
+                const core = new THREE.Mesh(geo, mat);
+                group.add(core);
+                
+                this.mesh = group;
+                this.mesh.position.set(0, 0, SPAWN_Z + 20);
+                this.chargeTime = 10;
+                
+                scene.add(this.mesh);
+                showNotification('☠️ BOSS CUỐI CÙNG! 10 GIÂY!');
+            }
+            
+            update(delta) {
+                this.mesh.rotation.x += delta * 3;
+                this.mesh.rotation.y += delta * 4;
+                this.mesh.position.z = Math.max(35, this.mesh.position.z - WORLD_SPEED * delta * 0.2);
+                
+                this.chargeTime -= delta;
+                if (this.chargeTime <= 0) {
+                    triggerGameOver();
+                }
+            }
+        }
+        
+        // ============ ITEMS ============
+        function getRandomItemType() {
+            const rand = Math.random();
+            if (rand < CONFIG.dropRates.statUpgrade) return 'stat';
+            if (rand < CONFIG.dropRates.statUpgrade + CONFIG.dropRates.consumable) return 'consumable';
+            return 'upgrade';
+        }
+        
+        function getRandomStatType() {
+            const rand = Math.random();
+            let cum = 0;
+            for (const [type, rate] of Object.entries(CONFIG.dropRates.stats)) {
+                cum += rate;
+                if (rand < cum) return type;
+            }
+            return 'damage';
+        }
+        
+        function getRandomConsumableType() {
+            const rand = Math.random();
+            let cum = 0;
+            for (const [type, rate] of Object.entries(CONFIG.dropRates.consumables)) {
+                cum += rate;
+                if (rand < cum) return type;
+            }
+            return 'fullHeal';
+        }
+        
+        function getRandomUpgradeType() {
+            const rand = Math.random();
+            let cum = 0;
+            for (const [type, rate] of Object.entries(CONFIG.dropRates.upgrades)) {
+                cum += rate;
+                if (rand < cum) return type;
+            }
+            return 'bulletStream';
+        }
+        
+        class Item {
+            constructor(xPos, category, type) {
+                this.category = category;
+                this.type = type;
+                
+                const group = new THREE.Group();
+                
+                const colors = {
+                    stat: 0x00ff00,
+                    consumable: 0xffff00,
+                    upgrade: 0xff00ff
+                };
+                
+                const color = colors[category];
+                
+                // Hình cầu thay vì hộp
+                const sphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
+                const sphereMat = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.6,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                group.add(sphere);
+                
+                // Vòng tròn xung quanh
+                const ringGeo = new THREE.TorusGeometry(0.6, 0.08, 8, 16);
+                const ringMat = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.8,
+                    metalness: 0.9
+                });
+                const ring1 = new THREE.Mesh(ringGeo, ringMat);
+                ring1.rotation.x = Math.PI / 2;
+                group.add(ring1);
+                
+                const ring2 = new THREE.Mesh(ringGeo, ringMat);
+                ring2.rotation.y = Math.PI / 2;
+                group.add(ring2);
+                
+                // Glow nhỏ
+                const glowGeo = new THREE.SphereGeometry(0.7, 12, 12);
+                const glowMat = new THREE.MeshBasicMaterial({ 
+                    color: color,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const glow = new THREE.Mesh(glowGeo, glowMat);
+                group.add(glow);
+                
+                this.mesh = group;
+                this.mesh.position.set(xPos, 0, SPAWN_Z);
+                this.collected = false;
+                this.glow = glow;
+                this.rings = [ring1, ring2];
+                this.sphere = sphere;
+                
+                scene.add(this.mesh);
+            }
+            
+            update(delta) {
+                if (!this.mesh || !this.mesh.position) return;
+                
+                this.mesh.position.z -= WORLD_SPEED * delta;
+                this.mesh.rotation.y += delta * 2;
+                this.mesh.position.y = Math.sin(Date.now() * 0.005) * 0.4;
+                
+                // Rings xoay
+                if (this.rings && this.rings.length >= 2) {
+                    this.rings[0].rotation.z += delta * 3;
+                    this.rings[1].rotation.x += delta * 3;
+                }
+                
+                // Glow pulse
+                if (this.glow && this.glow.material) {
+                    const pulse = Math.sin(Date.now() * 0.008) * 0.2 + 0.3;
+                    this.glow.material.opacity = pulse;
+                    this.glow.scale.set(1 + pulse, 1 + pulse, 1 + pulse);
+                    
+                    // Sphere pulse
+                    if (this.sphere && this.sphere.material) {
+                        this.sphere.material.emissiveIntensity = 0.6 + pulse;
+                    }
+                }
+                
+                if (!this.collected && player && player.mesh && player.mesh.position &&
+                    Math.abs(this.mesh.position.z - PLAYER_Z) < 2 && 
+                    Math.abs(this.mesh.position.x - player.mesh.position.x) < 2) {
+                    this.activate();
+                }
+            }
+            
+            activate() {
+                this.collected = true;
+                
+                if (this.category === 'stat') {
+                    if (this.type === 'maxHp') {
+                        gameState.maxHp += 10;
+                        gameState.hp += 10;
+                        showNotification('💚 +10 HP!');
+                    } else if (this.type === 'damage') {
+                        gameState.damage += 0.4;
+                        showNotification('⚔️ +0.4 Sát thương!');
+                    } else if (this.type === 'fireRate') {
+                        gameState.fireRate += 0.01;
+                        showNotification('🔫 +0.01 Tốc độ bắn!');
+                    } else if (this.type === 'regenPercent') {
+                        if (gameState.level >= 20) {
+                            if (gameState.regenPercent < CONFIG.limits.regenPercent) {
+                                gameState.regenPercent += 0.5;
+                                showNotification('💚 +0.5% Hồi máu!');
+                            }
+                        } else {
+                            showNotification('🔒 Cần Level 20!');
+                        }
+                    } else if (this.type === 'critDamage') {
+                        if (gameState.critDamage < CONFIG.limits.critDamage) {
+                            gameState.critDamage += 0.5;
+                            showNotification('💥 +0.5% Chí mạng DMG!');
+                        }
+                    } else if (this.type === 'critChance') {
+                        gameState.critChance += 0.5;
+                        showNotification('🎯 +0.5% Tỉ lệ chí mạng!');
+                    } else if (this.type === 'regenFlat') {
+                        if (gameState.level >= 20) {
+                            gameState.regenFlat += 1;
+                            showNotification('💚 +1 HP/s!');
+                        } else {
+                            showNotification('🔒 Cần Level 20!');
+                        }
+                    } else if (this.type === 'lifesteal') {
+                        if (gameState.lifesteal < 20) {
+                            gameState.lifesteal += 1;
+                            showNotification('🩸 +1% Hút máu!');
+                        }
+                    }
+                } else if (this.category === 'consumable') {
+                    if (this.type === 'fireRateBoost') {
+                        gameState.activeBuffs.fireRateBoost = Date.now() + 10000;
+                        showNotification('⚡ +5 Tốc độ (10s)!');
+                    } else if (this.type === 'damageBoost') {
+                        gameState.activeBuffs.damageBoost = Date.now() + 30000;
+                        showNotification('🔥 X2 Sát thương (30s)!');
+                    } else if (this.type === 'fullHeal') {
+                        gameState.hp = gameState.maxHp;
+                        showNotification('❤️ Hồi đầy máu!');
+                    } else if (this.type === 'restoreShield') {
+                        gameState.currentShields = gameState.shieldLayers;
+                        showNotification('🛡️ Khôi phục khiên!');
+                        updateShieldDisplay();
+                    } else if (this.type === 'killAll') {
+                        enemies.forEach(e => {
+                            e.destroy();
+                            gameState.kills++;
+                            gameState.gold += 10;
+                            addExp(5);
+                        });
+                        enemies.length = 0;
+                        showNotification('☢️ Tiêu diệt hết!');
+                    } else if (this.type === 'attractAll') {
+                        items.forEach(item => {
+                            if (!item.collected && item !== this) {
+                                item.mesh.position.x = player.mesh.position.x;
+                            }
+                        });
+                        showNotification('🧲 Hút vật phẩm!');
+                    }
+                } else if (this.category === 'upgrade') {
+                    if (this.type === 'bulletStream' && gameState.bulletStreams < CONFIG.limits.bulletStreams) {
+                        gameState.bulletStreams++;
+                        showNotification('🌊 +1 Tia đạn!');
+                    } else if (this.type === 'multiShot' && gameState.bulletsPerShot < CONFIG.limits.bulletsPerShot) {
+                        gameState.bulletsPerShot++;
+                        showNotification('💥 +1 Đạn/lần!');
+                    } else if (this.type === 'shieldLayer' && gameState.shieldLayers < 3) {
+                        gameState.shieldLayers++;
+                        gameState.currentShields = gameState.shieldLayers;
+                        showNotification('🛡️ +1 Lớp khiên!');
+                        updateShieldDisplay();
+                    }
+                }
+                
+                createExplosion(this.mesh.position, 0xffff00);
+                this.destroy();
+            }
+            
+            destroy() {
+                if (this.mesh && this.mesh.parent) {
+                    scene.remove(this.mesh);
+                }
+            }
+        }
+        
+        // ============ EFFECTS ============
+        function createExplosion(position, color, scale = 1) {
+            if (!position) return;
+            
+            const geo = new THREE.SphereGeometry(0.5 * scale);
+            const mat = new THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 0.8
+            });
+            const sphere = new THREE.Mesh(geo, mat);
+            sphere.position.copy(position);
+            scene.add(sphere);
+            
+            let life = 0.3;
+            const interval = setInterval(() => {
+                life -= 0.05;
+                sphere.scale.multiplyScalar(1.5);
+                mat.opacity = life / 0.3;
+                if (life <= 0) {
+                    if (sphere.parent) scene.remove(sphere);
+                    clearInterval(interval);
+                }
+            }, 50);
+        }
+        
+        function showDamageNumber(position, damage, isCrit) {
+            if (!position) return;
+            
+            const div = document.createElement('div');
+            div.className = 'damage-number ' + (isCrit ? 'crit' : 'normal');
+            div.textContent = Math.floor(damage);
+            div.style.left = (window.innerWidth / 2 + position.x * 25) + 'px';
+            div.style.top = (window.innerHeight / 2 - position.z * 8) + 'px';
+            document.getElementById('ui-overlay').appendChild(div);
+            setTimeout(() => div.remove(), 1200);
+        }
+        
+        // ============ EXP & LEVEL SYSTEM ============
+        function updateExpBar() {
+            const expBar = document.getElementById('expBar');
+            if (!expBar) return;
+            
+            const percent = (gameState.exp / gameState.expToNext) * 100;
+            expBar.style.width = percent + '%';
+        }
+        
+        function addExp(amount) {
+            gameState.exp += amount;
+            
+            while (gameState.exp >= gameState.expToNext) {
+                gameState.exp -= gameState.expToNext;
+                gameState.level++;
+                gameState.expToNext = Math.floor(gameState.expToNext * 1.5);
+                
+                // Tăng stats khi lên level (x2 so với vật phẩm)
+                gameState.damage += 0.8;
+                gameState.fireRate += 0.02;
+                
+                // Unlock skill mỗi 10 level
+                checkSkillUnlock(gameState.level);
+                
+                showNotification(`⭐ LEVEL ${gameState.level}! +0.8 DMG, +0.02 FR!`);
+            }
+            
+            updateExpBar();
+        }
+        
+        function checkSkillUnlock(level) {
+            // Level 1 có skill đầu tiên
+            if (level === 1) {
+                unlockSkill(1);
+            }
+            // Mỗi 10 level mở thêm skill
+            else if (level % 10 === 0) {
+                const skillTier = Math.floor(level / 10) + 1;
+                if (skillTier <= 5) {
+                    unlockSkill(skillTier);
+                }
+            }
+        }
+        
+        function unlockSkill(tier) {
+            const skills = {
+                1: { name: 'Missile Barrage', cooldown: 15, icon: '🚀' },
+                2: { name: 'Energy Shield', cooldown: 20, icon: '⚡' },
+                3: { name: 'Lightning Storm', cooldown: 18, icon: '⚡' },
+                4: { name: 'Orbital Strike', cooldown: 25, icon: '💫' },
+                5: { name: 'Time Slow', cooldown: 30, icon: '⏱️' }
+            };
+            
+            const skill = skills[tier];
+            if (skill) {
+                gameState.skills[tier] = skill;
+                gameState.skillCooldowns[tier] = 0;
+                showNotification(`🎆 SKILL MỚI: ${skill.icon} ${skill.name}!`);
+            }
+        }
+        
+        // ============ SKILL SYSTEM ============
+        function updateSkillCooldowns(delta) {
+            for (const tier in gameState.skillCooldowns) {
+                if (gameState.skillCooldowns[tier] > 0) {
+                    gameState.skillCooldowns[tier] -= delta;
+                    if (gameState.skillCooldowns[tier] < 0) {
+                        gameState.skillCooldowns[tier] = 0;
+                    }
+                }
+            }
+        }
+        
+        function updateSkillsDisplay() {
+            const container = document.getElementById('skills-display');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            for (const tier in gameState.skills) {
+                const skill = gameState.skills[tier];
+                const cooldown = gameState.skillCooldowns[tier] || 0;
+                
+                const div = document.createElement('div');
+                div.className = 'skill-item' + (cooldown <= 0 ? ' ready' : '');
+                
+                div.innerHTML = `
+                    <div class="skill-icon">${skill.icon}</div>
+                    <div class="skill-cooldown">${cooldown > 0 ? Math.ceil(cooldown) + 's' : 'READY'}</div>
+                `;
+                
+                container.appendChild(div);
+            }
+        }
+        
+        function useSkill(tier) {
+            const skill = gameState.skills[tier];
+            if (!skill) return false;
+            
+            if (gameState.skillCooldowns[tier] > 0) return false;
+            
+            // Activate skill
+            gameState.skillCooldowns[tier] = skill.cooldown;
+            
+            switch(tier) {
+                case 1: // Missile Barrage - 10 tên lửa
+                    activateMissileBarrage();
+                    break;
+                case 2: // Energy Shield - 5s bất tử
+                    activateEnergyShield();
+                    break;
+                case 3: // Lightning Storm - Giết toàn bộ
+                    activateLightningStorm();
+                    break;
+                case 4: // Orbital Strike - Damage khủng boss
+                    activateOrbitalStrike();
+                    break;
+                case 5: // Time Slow - Làm chậm mọi thứ
+                    activateTimeSlow();
+                    break;
+            }
+            
+            showNotification(`${skill.icon} ${skill.name}!`);
+            return true;
+        }
+        
+        function activateMissileBarrage() {
+            // Bắn 10 tên lửa to
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const missile = createMissile();
+                    scene.add(missile);
+                    
+                    // Animate missile
+                    const missileAnim = setInterval(() => {
+                        missile.position.z += 3;
+                        missile.rotation.x += 0.2;
+                        
+                        // Check hit
+                        for (let j = enemies.length - 1; j >= 0; j--) {
+                            if (missile.position.distanceTo(enemies[j].mesh.position) < 3) {
+                                const damage = gameState.damage * 5;
+                                if (enemies[j].takeDamage(damage)) {
+                                    enemies[j].destroy();
+                                    enemies.splice(j, 1);
+                                    gameState.kills++;
+                                    gameState.gold += 10;
+                                    addExp(15);
+                                }
+                            }
+                        }
+                        
+                        if (missile.position.z > SPAWN_Z + 10) {
+                            scene.remove(missile);
+                            clearInterval(missileAnim);
+                        }
+                    }, 50);
+                }, i * 200);
+            }
+        }
+        
+        function createMissile() {
+            const group = new THREE.Group();
+            
+            const bodyGeo = new THREE.CylinderGeometry(0.3, 0.2, 2, 8);
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.8
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.rotation.x = Math.PI / 2;
+            group.add(body);
+            
+            const coneGeo = new THREE.ConeGeometry(0.2, 0.5, 8);
+            const cone = new THREE.Mesh(coneGeo, bodyMat);
+            cone.rotation.x = Math.PI / 2;
+            cone.position.z = 1.2;
+            group.add(cone);
+            
+            group.position.set(player.mesh.position.x, 0, player.mesh.position.z + 2);
+            
+            return group;
+        }
+        
+        function activateEnergyShield() {
+            gameState.invincible = true;
+            gameState.invincibleTimer = 5;
+            
+            // Visual effect
+            const shieldGeo = new THREE.SphereGeometry(3, 16, 16);
+            const shieldMat = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.3,
+                wireframe: true
+            });
+            const shield = new THREE.Mesh(shieldGeo, shieldMat);
+            player.mesh.add(shield);
+            
+            setTimeout(() => {
+                player.mesh.remove(shield);
+            }, 5000);
+        }
+        
+        function activateLightningStorm() {
+            // Tạo sét đánh toàn bộ quái
+            enemies.forEach((enemy, i) => {
+                setTimeout(() => {
+                    // Lightning effect
+                    const lightningGeo = new THREE.CylinderGeometry(0.1, 0.1, 20, 4);
+                    const lightningMat = new THREE.MeshBasicMaterial({ 
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const lightning = new THREE.Mesh(lightningGeo, lightningMat);
+                    lightning.position.set(enemy.mesh.position.x, 10, enemy.mesh.position.z);
+                    scene.add(lightning);
+                    
+                    setTimeout(() => scene.remove(lightning), 200);
+                    
+                    enemy.destroy();
+                    gameState.kills++;
+                    gameState.gold += 10;
+                    addExp(15);
+                }, i * 50);
+            });
+            enemies.length = 0;
+        }
+        
+        function activateOrbitalStrike() {
+            if (currentBoss) {
+                // Tạo orbital beam
+                const beamGeo = new THREE.CylinderGeometry(2, 2, 30, 16);
+                const beamMat = new THREE.MeshBasicMaterial({ 
+                    color: 0xff00ff,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const beam = new THREE.Mesh(beamGeo, beamMat);
+                beam.position.set(currentBoss.mesh.position.x, 15, currentBoss.mesh.position.z);
+                scene.add(beam);
+                
+                const hugeDamage = gameState.damage * 100;
+                currentBoss.takeDamage(hugeDamage);
+                showDamageNumber(currentBoss.mesh.position, hugeDamage, true);
+                
+                setTimeout(() => scene.remove(beam), 1000);
+            } else {
+                // Nếu không có boss, kill toàn bộ quái
+                activateLightningStorm();
+            }
+        }
+        
+        function activateTimeSlow() {
+            // Làm chậm quái và đạn 50% trong 8 giây
+            gameState.activeBuffs.timeSlow = Date.now() + 8000;
+            showNotification('⏱️ Thời gian chậm lại!');
+        }
+        
+        function updateSkillCooldowns(delta) {
+            for (const tier in gameState.skillCooldowns) {
+                if (gameState.skillCooldowns[tier] > 0) {
+                    gameState.skillCooldowns[tier] -= delta;
+                    if (gameState.skillCooldowns[tier] < 0) {
+                        gameState.skillCooldowns[tier] = 0;
+                    }
+                }
+            }
+        }
+        
+        // ============ UI UPDATES ============
+        function updateUI() {
+            document.getElementById('gold').textContent = Math.floor(gameState.gold);
+            document.getElementById('kills').textContent = gameState.kills;
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('damage').textContent = gameState.damage.toFixed(1);
+            document.getElementById('fireRate').textContent = gameState.fireRate.toFixed(2);
+            document.getElementById('critChance').textContent = gameState.critChance.toFixed(1);
+            const critDmgCapped = Math.min(gameState.critDamage, CONFIG.limits.critDamage);
+            document.getElementById('critDamage').textContent = critDmgCapped.toFixed(1);
+            const regenPercent = Math.min(gameState.regenPercent, CONFIG.limits.regenPercent);
+            document.getElementById('regen').textContent = (gameState.regenFlat + gameState.maxHp * regenPercent / 100).toFixed(1);
+            document.getElementById('lifesteal').textContent = Math.min(gameState.lifesteal, 20);
+            document.getElementById('shieldLayers').textContent = gameState.shieldLayers;
+            document.getElementById('waveTimer').textContent = Math.ceil(gameState.waveTimer) + 's';
+            document.getElementById('roundNum').textContent = gameState.cycle;
+            
+            const min = Math.floor(gameState.gameTimeSeconds / 60);
+            const sec = Math.floor(gameState.gameTimeSeconds % 60);
+            document.getElementById('gameTime').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+            
+            const hpPercent = (gameState.hp / gameState.maxHp) * 100;
+            document.getElementById('hpFill').style.width = hpPercent + '%';
+            document.getElementById('hpText').textContent = `${Math.floor(gameState.hp)} / ${gameState.maxHp}`;
+            
+            updateBuffsDisplay();
+        }
+        
+        function updateBossHealthBar() {
+            const percent = (gameState.bossHealth / gameState.bossMaxHealth) * 100;
+            document.getElementById('bossHealthFill').style.width = percent + '%';
+        }
+        
+        function updateShieldDisplay() {
+            const shieldEl = document.getElementById('shield-status');
+            
+            if (gameState.invincible) {
+                shieldEl.textContent = `⚡ BẤT TỬ! ⚡`;
+                shieldEl.classList.add('invincible');
+                shieldEl.classList.remove('broken');
+            } else {
+                shieldEl.textContent = `🛡️ Khiên: ${gameState.currentShields}/${gameState.shieldLayers}`;
+                shieldEl.classList.remove('invincible');
+                
+                if (gameState.currentShields > 0) {
+                    shieldEl.classList.remove('broken');
+                } else {
+                    shieldEl.classList.add('broken');
+                }
+            }
+        }
+        
+        function updateBuffsDisplay() {
+            const container = document.getElementById('buffs-display');
+            container.innerHTML = '';
+            
+            const now = Date.now();
+            for (const [type, endTime] of Object.entries(gameState.activeBuffs)) {
+                if (endTime > now) {
+                    const remaining = Math.ceil((endTime - now) / 1000);
+                    const div = document.createElement('div');
+                    div.className = 'buff-item';
+                    
+                    if (type === 'fireRateBoost') {
+                        div.textContent = `⚡ +5 Bắn: ${remaining}s`;
+                    } else if (type === 'damageBoost') {
+                        div.textContent = `🔥 X2 DMG: ${remaining}s`;
+                    }
+                    
+                    container.appendChild(div);
+                } else {
+                    delete gameState.activeBuffs[type];
+                }
+            }
+        }
+        
+        function showNotification(text) {
+            const notif = document.getElementById('notifications');
+            notif.textContent = text;
+            notif.classList.add('show');
+            
+            setTimeout(() => {
+                notif.classList.remove('show');
+            }, 2500);
+        }
+        
+        function triggerGameOver() {
+            gameState.gameOver = true;
+            const min = Math.floor(gameState.gameTimeSeconds / 60);
+            const sec = Math.floor(gameState.gameTimeSeconds % 60);
+            document.getElementById('finalTime').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+            document.getElementById('finalKills').textContent = gameState.kills;
+            document.getElementById('finalGold').textContent = Math.floor(gameState.gold);
+            document.getElementById('game-over').classList.add('show');
+        }
+        
+        // ============ GAME OBJECTS ============
+        const player = new Player();
+        const enemies = [];
+        const items = [];
+        let currentBoss = null;
+        let finalBoss = null;
+        
+        let enemySpawnTimer = 0;
+        let itemSpawnTimer = 0;
+        
+        // ============ AI ============
+        function updateAI() {
+            if (gameState.gameOver) return;
+            
+            const healthPercent = gameState.hp / gameState.maxHp;
+            const isDangerous = healthPercent < 0.5;
+            
+            // Thu thập tất cả threats
+            const threats = [];
+            enemies.forEach(enemy => {
+                if (enemy && enemy.bullets) {
+                    enemy.bullets.forEach(b => {
+                        if (b && b.position) threats.push(b);
+                    });
+                }
+            });
+            if (currentBoss && currentBoss.bullets) {
+                currentBoss.bullets.forEach(b => {
+                    if (b && b.position) threats.push(b);
+                });
+            }
+            
+            // AI sử dụng skill
+            aiUseSkills(threats);
+            
+            // Scoring system cho mỗi vị trí X
+            const positions = [];
+            for (let x = -12; x <= 12; x += 0.5) {
+                let score = 0;
+                
+                // 1. Đánh giá mức độ an toàn từ đạn
+                let minThreatDist = Infinity;
+                let dangerLevel = 0;
+                
+                threats.forEach(threat => {
+                    if (!threat || !threat.position) return;
+                    
+                    const dist = Math.abs(x - threat.position.x);
+                    const zDist = threat.position.z - PLAYER_Z;
+                    
+                    // Chỉ quan tâm đến đạn đang bay về phía player
+                    if (zDist > -5 && zDist < 12) {
+                        const threatScore = Math.max(0, 10 - dist) * (1 + (12 - zDist) / 12);
+                        dangerLevel += threatScore;
+                        minThreatDist = Math.min(minThreatDist, dist);
+                    }
+                });
+                
+                // Nếu máu > 50%, giảm trọng số của danger
+                const dangerWeight = isDangerous ? 1.0 : 0.5;
+                score -= dangerLevel * dangerWeight;
+                
+                // 2. Đánh giá vật phẩm gần
+                items.forEach(item => {
+                    if (!item || !item.mesh || !item.mesh.position || item.collected) return;
+                    
+                    const dist = Math.abs(x - item.mesh.position.x);
+                    const zDist = item.mesh.position.z - PLAYER_Z;
+                    
+                    // Ưu tiên vật phẩm gần và sắp qua
+                    if (zDist > -2 && zDist < 15) {
+                        let itemValue = 5;
+                        
+                        // Ưu tiên các loại item quan trọng
+                        if (item.category === 'stat') {
+                            if (item.type === 'damage' || item.type === 'fireRate') {
+                                itemValue = 15; // Ưu tiên tăng sức mạnh
+                            } else if (item.type === 'maxHp' && healthPercent < 0.7) {
+                                itemValue = 12; // Cần máu
+                            } else {
+                                itemValue = 8;
+                            }
+                        } else if (item.category === 'consumable') {
+                            if (item.type === 'fullHeal' && healthPercent < 0.5) {
+                                itemValue = 20; // Rất cần hồi máu
+                            } else if (item.type === 'restoreShield' && gameState.currentShields === 0) {
+                                itemValue = 18;
+                            } else if (item.type === 'damageBoost' || item.type === 'fireRateBoost') {
+                                itemValue = 10; // Buff sức mạnh
+                            } else {
+                                itemValue = 6;
+                            }
+                        } else if (item.category === 'upgrade') {
+                            itemValue = 12; // Upgrade quan trọng
+                        }
+                        
+                        // Nếu máu > 50%, tăng trọng số của item
+                        const itemWeight = isDangerous ? 0.7 : 1.5;
+                        const itemScore = (itemValue / (dist + 1)) * (1 + (15 - zDist) / 15) * itemWeight;
+                        score += itemScore;
+                    }
+                });
+                
+                // 3. Đánh giá vị trí quái để bắn (khi máu > 50%)
+                if (!isDangerous) {
+                    enemies.forEach(enemy => {
+                        if (!enemy || !enemy.mesh || !enemy.mesh.position) return;
+                        
+                        const dist = Math.abs(x - enemy.mesh.position.x);
+                        const zDist = enemy.mesh.position.z - PLAYER_Z;
+                        
+                        if (zDist > 5 && zDist < 35) {
+                            const targetScore = 3 / (dist + 1);
+                            score += targetScore;
+                        }
+                    });
+                }
+                
+                // 4. Bonus cho việc ở giữa màn hình (dễ né và bắn)
+                const centerBonus = Math.max(0, 2 - Math.abs(x) / 6);
+                score += centerBonus * 0.5;
+                
+                positions.push({ x, score });
+            }
+            
+            // Chọn vị trí tốt nhất
+            positions.sort((a, b) => b.score - a.score);
+            const bestPos = positions[0];
+            
+            if (bestPos) {
+                player.moveToX(bestPos.x);
+            }
+        }
+        
+        function aiUseSkills(threats) {
+            if (!gameState.skills || Object.keys(gameState.skills).length === 0) return;
+            
+            const healthPercent = gameState.hp / gameState.maxHp;
+            const enemyCount = enemies.length;
+            const dangerousThreats = threats.filter(t => t && t.position && t.position.z - PLAYER_Z < 8).length;
+            
+            // Skill 1: Missile Barrage - Dùng khi nhiều quái (>5)
+            if (enemyCount > 5 && gameState.skillCooldowns[1] === 0) {
+                useSkill(1);
+                return;
+            }
+            
+            // Skill 2: Energy Shield - Dùng khi máu < 30% và không có shield
+            if (healthPercent < 0.3 && gameState.currentShields === 0 && gameState.skillCooldowns[2] === 0) {
+                useSkill(2);
+                return;
+            }
+            
+            // Skill 3: Lightning Storm - Dùng khi quá nhiều quái (>8)
+            if (enemyCount > 8 && gameState.skillCooldowns[3] === 0) {
+                useSkill(3);
+                return;
+            }
+            
+            // Skill 4: Orbital Strike - Dùng cho boss nếu có
+            if (currentBoss && gameState.skillCooldowns[4] === 0) {
+                const bossHealthPercent = currentBoss.health / currentBoss.maxHealth;
+                // Dùng khi boss còn nhiều máu
+                if (bossHealthPercent > 0.5) {
+                    useSkill(4);
+                    return;
+                }
+            }
+            
+            // Skill 5: Time Slow - Dùng khi có quá nhiều đạn nguy hiểm
+            if (dangerousThreats > 10 && gameState.skillCooldowns[5] === 0) {
+                useSkill(5);
+                return;
+            }
+        }
+        
+        // ============ WAVE SYSTEM ============
+        function updateWaveSystem(delta) {
+            if (gameState.gameOver) return;
+            
+            gameState.gameTimeSeconds += delta;
+            gameState.waveTimer -= delta;
+            
+            // Check for final boss
+            if (gameState.gameTimeSeconds >= CONFIG.waves.finalBossTime && !finalBoss) {
+                finalBoss = new FinalBoss();
+            }
+            
+            if (gameState.waveTimer <= 0) {
+                if (gameState.currentWave === 'relax') {
+                    gameState.currentWave = 'combat';
+                    gameState.waveTimer = CONFIG.waves.combatDuration;
+                    gameState.totalEnemyHealthLastWave = 0;
+                    document.getElementById('waveType').textContent = '⚔️ Vòng Chiến Đấu';
+                } else if (gameState.currentWave === 'combat') {
+                    gameState.currentWave = 'boss';
+                    gameState.waveTimer = 999;
+                    if (!currentBoss) {
+                        currentBoss = new Boss(gameState.cycle);
+                    }
+                    document.getElementById('waveType').textContent = '💀 Vòng Boss';
+                } else if (gameState.currentWave === 'boss' && !currentBoss) {
+                    // Boss đã bị giết, tự động chuyển sang relax (handled in Boss.destroy())
+                }
+            }
+            
+            // Spawn enemies
+            if (gameState.currentWave === 'combat' || gameState.currentWave === 'boss') {
+                const statBonus = (gameState.damage * CONFIG.spawn.enemyStatMultiplier) + 
+                                 (gameState.fireRate * CONFIG.spawn.enemyStatMultiplier * 10);
+                const spawnRate = CONFIG.spawn.enemyPerSecondBase + 
+                                 gameState.cycle * CONFIG.spawn.enemyIncreasePerCycle +
+                                 statBonus;
+                enemySpawnTimer += delta * spawnRate;
+                
+                if (enemySpawnTimer >= 1) {
+                    const x = (Math.random() - 0.5) * 20;
+                    const type = Math.random() > 0.5 ? 'tank' : 'damage';
+                    const enemy = new Enemy(type, x);
+                    enemies.push(enemy);
+                    gameState.totalEnemyHealthLastWave += enemy.maxHealth;
+                    enemySpawnTimer = 0;
+                }
+            }
+            
+            // Spawn items
+            const itemRate = gameState.currentWave === 'relax' ? 
+                            CONFIG.spawn.itemPerSecondRelax * (1 + gameState.cycle * 0.4) : 
+                            CONFIG.spawn.itemPerSecondCombat;
+            itemSpawnTimer += delta * itemRate;
+            
+            if (itemSpawnTimer >= 1) {
+                const x = (Math.random() - 0.5) * 20;
+                const category = getRandomItemType();
+                let type;
+                if (category === 'stat') type = getRandomStatType();
+                else if (category === 'consumable') type = getRandomConsumableType();
+                else type = getRandomUpgradeType();
+                
+                items.push(new Item(x, category, type));
+                itemSpawnTimer = 0;
+            }
+        }
+        
+        // ============ COLLISION ============
+        function checkCollisions() {
+            if (gameState.gameOver) return;
+            
+            // Player bullets vs enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                if (!enemy || !enemy.mesh || !enemy.mesh.position) continue;
+                
+                for (let j = player.bullets.length - 1; j >= 0; j--) {
+                    const bullet = player.bullets[j];
+                    if (!bullet || !bullet.position) continue;
+                    
+                    if (bullet.position.distanceTo(enemy.mesh.position) < 2) {
+                        if (bullet.parent) scene.remove(bullet);
+                        player.bullets.splice(j, 1);
+                        
+                        let damage = gameState.damage;
+                        if (gameState.activeBuffs.damageBoost) damage *= 2;
+                        
+                        const isCrit = Math.random() * 100 < gameState.critChance;
+                        if (isCrit) {
+                            const critDmgCapped = Math.min(gameState.critDamage, CONFIG.limits.critDamage);
+                            damage *= (critDmgCapped / 100);
+                        }
+                        
+                        showDamageNumber(enemy.mesh.position, damage, isCrit);
+                        
+                        if (enemy.takeDamage(damage)) {
+                            enemy.destroy();
+                            enemies.splice(i, 1);
+                            gameState.gold += 5;
+                            gameState.kills++;
+                            addExp(enemy.type === 'tank' ? 15 : 10);
+                            
+                            if (gameState.lifesteal > 0) {
+                                const lifestealCapped = Math.min(gameState.lifesteal, 20);
+                                const heal = damage * (lifestealCapped / 100);
+                                gameState.hp = Math.min(gameState.maxHp, gameState.hp + heal);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Player bullets vs boss
+            if (currentBoss && currentBoss.mesh && currentBoss.mesh.position) {
+                for (let j = player.bullets.length - 1; j >= 0; j--) {
+                    const bullet = player.bullets[j];
+                    if (!bullet || !bullet.position) continue;
+                    
+                    if (bullet.position.distanceTo(currentBoss.mesh.position) < 5) {
+                        if (bullet.parent) scene.remove(bullet);
+                        player.bullets.splice(j, 1);
+                        
+                        let damage = gameState.damage;
+                        if (gameState.activeBuffs.damageBoost) damage *= 2;
+                        
+                        const isCrit = Math.random() * 100 < gameState.critChance;
+                        if (isCrit) {
+                            const critDmgCapped = Math.min(gameState.critDamage, CONFIG.limits.critDamage);
+                            damage *= (critDmgCapped / 100);
+                        }
+                        
+                        showDamageNumber(currentBoss.mesh.position, damage, isCrit);
+                        
+                        if (currentBoss.takeDamage(damage)) {
+                            currentBoss.destroy();
+                            currentBoss = null;
+                        }
+                    }
+                }
+            }
+            
+            // Enemy bullets vs player
+            if (!gameState.invincible && player && player.mesh && player.mesh.position) {
+                const allEnemyBullets = [];
+                
+                enemies.forEach(e => {
+                    if (e && e.bullets) {
+                        e.bullets.forEach(b => {
+                            if (b && b.position) allEnemyBullets.push({ bullet: b, source: e });
+                        });
+                    }
+                });
+                
+                if (currentBoss && currentBoss.bullets) {
+                    currentBoss.bullets.forEach(b => {
+                        if (b && b.position) allEnemyBullets.push({ bullet: b, source: currentBoss });
+                    });
+                }
+                
+                for (const { bullet, source } of allEnemyBullets) {
+                    if (!bullet || !bullet.position) continue;
+                    
+                    if (bullet.position.distanceTo(player.mesh.position) < 1.5) {
+                        const damage = source && source.damage ? source.damage : 50;
+                        player.takeDamage(damage);
+                        if (bullet.parent) scene.remove(bullet);
+                        
+                        // Xóa bullet khỏi array của enemy/boss
+                        if (source && source.bullets) {
+                            const idx = source.bullets.indexOf(bullet);
+                            if (idx > -1) source.bullets.splice(idx, 1);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // ============ GAME LOOP ============
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.05);
+            
+            if (!gameState.gameOver) {
+                updateWaveSystem(delta);
+                updateSkillCooldowns(delta);
+                updateAI();
+                player.update(delta);
+                
+                // Update enemies với null check
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    if (!e || !e.mesh || !e.mesh.position) {
+                        enemies.splice(i, 1);
+                        continue;
+                    }
+                    
+                    e.update(delta);
+                    if (e.mesh.position.z < PLAYER_Z - 20) {
+                        e.destroy();
+                        enemies.splice(i, 1);
+                    }
+                }
+                
+                // Update items với null check
+                for (let i = items.length - 1; i >= 0; i--) {
+                    const item = items[i];
+                    if (!item || !item.mesh || !item.mesh.position) {
+                        items.splice(i, 1);
+                        continue;
+                    }
+                    
+                    item.update(delta);
+                    if (item.mesh.position.z < PLAYER_Z - 20) {
+                        item.destroy();
+                        items.splice(i, 1);
+                    }
+                }
+                
+                if (currentBoss && currentBoss.mesh && currentBoss.mesh.position) {
+                    currentBoss.update(delta);
+                }
+                if (finalBoss && finalBoss.mesh && finalBoss.mesh.position) {
+                    finalBoss.update(delta);
+                }
+                
+                checkCollisions();
+                updateUI();
+                updateShieldDisplay();
+                updateExpBar();
+                updateSkillsDisplay();
+            }
+            
+            stars.rotation.y += delta * 0.1;
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Unlock skill đầu tiên
+        checkSkillUnlock(1);
+        
+        animate();
+        showNotification('🎮 GAME BẮT ĐẦU! 🎮');
+        updateSkillsDisplay();
+    </script>
+</body>
+</html>
